@@ -14,6 +14,11 @@ endif
 let b:indent=get(g:,"markdown_simple_indent",nr2char(9))
 let b:table_flag=get(g:,"markdown_simple_table_flag",";;")
 
+let g:ibus_enable=get(g:,'ibus_enable',0)
+if g:ibus_enable
+	let g:AutoPairsMapBS=0
+endif
+
 func! s:AddTitle()
 	let s:old=col('.')-1
 
@@ -37,11 +42,15 @@ func! s:AddSub()
 	let s:char= getline('.')[col]
 	if s:char=='-'
 		execute "normal! 2x"
+		let s:old-=3
 	else
 		execute "normal! i-\ "
+		let s:old+=1
 	endif
 
-	execute "normal! 0".s:old."l"
+	if s:old>0
+		execute "normal! 0".s:old."l"
+	endif
 endfunc
 
 func! s:Code()
@@ -123,7 +132,7 @@ func! s:Paste()
 	execute "normal! F]"
 endfunc
 
-func! s:Enter(ch)
+func! g:VimFastEnter(ch)
 	let s:str=getline('.')
 	let s:char=""
 	let s:i=0
@@ -148,7 +157,10 @@ func! s:Enter(ch)
 	endif
 
 	let @s=""
-	if a:ch=='o'
+	if a:ch=='io'
+		let @s=b:indent
+		return
+	elseif a:ch=='ke'
 		let @s=b:indent
 	endif
 
@@ -168,6 +180,7 @@ func! s:Enter(ch)
 		let @s=""
 	endif
 
+	return "\<cr>".@s
 endfunc
 
 func! s:Backspace()
@@ -191,15 +204,26 @@ func! s:Backspace()
 		let s:i-=1
 	endwhile
 
+	let s:result=''
+
+	if s:i==0&&s:str[s:i]==nr2char(9)
+		let s:delete-=1
+	endif
 	if s:tab
 		let s:delete-=1
 	endif
 
+	let s:result=s:result."\<bs>"
 	if s:delete>0
-		execute "normal ".s:delete."X"
+		while s:delete>1
+			let s:result=s:result."\<bs>"
+			let s:delete-=1
+		endwhile
+		return s:result
 	else
-		execute "normal X"
+		return s:result
 	endif
+	return
 endfunc
 
 nnoremap <silent><buffer>#         : call <sid>AddTitle()<cr><right>
@@ -222,10 +246,14 @@ nnoremap <silent><buffer>`     viw:call <sid>Bold('`')<cr>
 
 vnoremap <silent><buffer><leader>` :<c-u>call <sid>Code()<cr>
 
-nnoremap <silent><buffer>o     :call <sid>Enter('o')<cr>o<c-r>s
-inoremap <silent><buffer><c-m> <c-o>:call <sid>Enter('')<cr><c-m><c-r>s
+nnoremap <silent><buffer>o         :call g:VimFastEnter('o')<cr>o<c-r>s
+nnoremap <silent><buffer><leader>o :call g:VimFastEnter('io')<cr>o<c-r>s
 
-inoremap <silent><buffer><c-\>   <c-o>:call <sid>Backspace()<cr>
+inoremap <silent><buffer><c-m>      <c-r>=g:VimFastEnter('')<cr>
+inoremap <silent><buffer><kenter>   <c-r>=g:VimFastEnter('ke')<cr>
+
+inoremap <expr><silent><buffer><c-\>  <sid>Backspace()
+inoremap <expr><silent><buffer><bs>   <sid>Backspace()
 
 if b:table_flag!=""
 	execute ":inoremap <silent><buffer>".b:table_flag." \\|"
@@ -244,3 +272,5 @@ vnoremenu <silent> PopUp.Code\ Text   : call <sid>Bold('`')<cr>
 
 iab <buffer>! ![]()<left>
 iab <buffer>] []()<left>
+
+set conceallevel=3

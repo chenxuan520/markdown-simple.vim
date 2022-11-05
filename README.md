@@ -4,7 +4,7 @@
 
 ## 效果
 
-![](https://pic1.zhimg.com/v2-0d3587b7a0a949b2a9bde6d36fae9a00_b.webp)
+[bilibili](https://www.bilibili.com/video/BV1cv4y1Q7hz)
 
 ## 安装
 
