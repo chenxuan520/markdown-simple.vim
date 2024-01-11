@@ -14,10 +14,9 @@ endif
 let b:indent=get(g:,"markdown_simple_indent",nr2char(9))
 let b:table_flag=get(g:,"markdown_simple_table_flag",";;")
 
-let g:AutoPairsMapBS=0
 augroup mdpair
 	au!
-	au BufLeave *.md let g:AutoPairsMapBS=1|let conceallevel=0|au! mdpair
+	au BufLeave *.md let conceallevel=0|au! mdpair
 augroup END
 
 func! s:AddTitle()
@@ -158,7 +157,7 @@ func! g:VimFastEnter(ch)
 	let s:char=""
 	let s:i=0
 	" 删除至行首
-	if match(s:str, '^\s*-\s*$')>=0||match(s:str, '^\s*\d.\s*$')>=0||match(s:str, '^\s*>\s*$')>=0
+	if match(s:str, '^\s*-\s*$')>=0||match(s:str, '^\s*\d\+.\s*$')>=0||match(s:str, '^\s*>\s*$')>=0
 		return "\<c-u>"
 	endif
 	" 如果发现前面有空格,那么减少缩进
@@ -203,7 +202,7 @@ func! g:VimFastEnter(ch)
 			execute ":Tabularize /|"
 			execute "normal! $l"
 		endif
-		let @s='|'
+		let @s=''
 	elseif s:char[0]>0&&s:char[0]<=9
 		let @s=(s:char+1).". "
 	else
@@ -211,6 +210,14 @@ func! g:VimFastEnter(ch)
 	endif
 
 	return "\<cr>".@s
+endfunc
+
+func! s:OrderList()
+	let line=getline('.')
+	if line =~ '^\s*\d$'
+		return '. '
+	endif
+	return '.'
 endfunc
 
 func! s:Backspace()
@@ -346,17 +353,47 @@ endfunc
 
 func! s:TableCreate(mode)
 	let s:get=getchar()-48
+	let s:time=getchar()-48
 	let s:result=''
+	let s:split=''
+	if s:get<'0'||s:get>'9'
+		let s:get=1
+	endif
+	if s:time<'0'||s:time>'9'
+		let s:time=1
+	endif
+
 	while s:get>0
 		let s:result=s:result.'|{text}'
+		let s:split=s:split.'| --- '
 		let s:get-=1
 	endwhile
+
 	let s:result=s:result.'|'
+	let s:split=s:split.'|'
+	let one=s:result
+	if s:time>1
+		let s:result=s:result."\<c-m>".s:split
+	endif
+
+	while s:time>1
+		let s:result=s:result."\<c-m>".one
+		let s:time-=1
+	endwhile
+
 	if a:mode!=''
 		return s:result
 	endif
-	execute 'normal! i'.s:result
-	execute 'normal! ^'
+
+	while s:time>0
+		execute 'normal! i'.s:result
+		if s:time>1
+			execute 'normal! o'.s:result
+		else
+			execute 'normal! ^'
+		endif
+		let s:time-=1
+	endwhile
 endfunc
 
 nnoremap <silent><buffer>#         : call <sid>AddTitle()<cr><right>
@@ -402,9 +439,7 @@ inoremap <expr><silent><buffer>- <sid>DivLine('-')
 inoremap <expr><silent><buffer>> <sid>DivLine('>')
 inoremap <silent><buffer>* **<left>
 inoremap <silent><buffer>~~ ~~~~<left><left>
-for s:i in [0,1,2,3,4,5,6,7,8,9]
-	execute "inoremap <silent><buffer>".s:i.". ".s:i.". "
-endfor
+inoremap <expr><silent><buffer>. <sid>OrderList()
 
 let s:head='#'
 for s:i in [1,2,3,4,5]
@@ -423,17 +458,25 @@ nnoremap <silent><buffer>"+p :call <sid>Paste()<cr>
 nnoremap <silent><buffer>> >>
 nnoremap <silent><buffer>< <<
 
-inoremap <silent><expr><TAB>
+inoremap <silent><buffer><expr><TAB>
 			\ pumvisible() ? "\<C-n>" :
 			\ getline(".")=~'^\s*$'  ? "\<TAB>" :
 			\ "\<c-o>>>\<c-o>$"
-inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<c-o><<\<c-o>$"
+inoremap <expr><buffer><S-TAB> pumvisible() ? "\<C-p>" : "\<c-o><<\<c-o>$"
 
-vnoremenu <silent> PopUp.Bold\ Text   :call <sid>Bold('**')<cr>
-vnoremenu <silent> PopUp.Italic\ Text :call <sid>Bold('*')<cr>
-vnoremenu <silent> PopUp.Line\ Text   :call <sid>Bold('~~')<cr>
-vnoremenu <silent> PopUp.Code\ Text   :call <sid>Bold('`')<cr>
-vnoremenu <silent> PopUp.Link\ Text   :call <sid>BlodLink('[',']()')<cr>f]f)
+" for popup menu
+func MarkDownMenu()
+	unmenu PopUp
+	" markdown text
+	vnoremenu PopUp.Bold\ Text   :call <sid>Bold('**')<cr>
+	vnoremenu PopUp.Italic\ Text :call <sid>Bold('*')<cr>
+	vnoremenu PopUp.Line\ Text   :call <sid>Bold('~~')<cr>
+	vnoremenu PopUp.Code\ Text   :call <sid>Bold('`')<cr>
+	vnoremenu PopUp.Link\ Text   :call <sid>BlodLink('[',']()')<cr>f]f)
+
+	call MouseConfig()
+endfunc
+let g:rightmouse_popupmenu['markdown']=function("MarkDownMenu")
 
 inoremap <silent><buffer> !<space> ![{title}]()<left>
 inoremap <silent><buffer> ]<space>  [{title}]()<left>
