@@ -458,6 +458,9 @@ nnoremap <silent><buffer>"+p :call <sid>Paste()<cr>
 nnoremap <silent><buffer>> >>
 nnoremap <silent><buffer>< <<
 
+inoremap <silent><buffer><c-l> [{text}]({link})
+inoremap <silent><buffer><c-j> ![{text}]({link})
+
 inoremap <silent><buffer><expr><TAB>
 			\ pumvisible() ? "\<C-n>" :
 			\ getline(".")=~'^\s*$'  ? "\<TAB>" :
@@ -477,8 +480,5 @@ func MarkDownMenu()
 	call MouseConfig()
 endfunc
 let g:rightmouse_popupmenu['markdown']=function("MarkDownMenu")
-
-inoremap <silent><buffer> !<space> ![{title}]()<left>
-inoremap <silent><buffer> ]<space>  [{title}]()<left>
 
 setlocal conceallevel=3
